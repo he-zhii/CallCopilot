@@ -57,6 +57,8 @@ class WSClient {
     sendAudio(pcmBuffer) {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             this.ws.send(pcmBuffer);
+        } else {
+            console.log('[WSClient] WebSocket未就绪，状态:', this.ws?.readyState);
         }
     }
 

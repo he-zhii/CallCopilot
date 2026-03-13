@@ -39,6 +39,8 @@ class AudioCapture {
                 const resampledData = this.resample(inputData, sourceSampleRate, this.targetSampleRate);
                 const pcmData = this.floatTo16BitPCM(resampledData);
                 
+                console.log('[AudioCapture] 发送音频数据:', pcmData.byteLength, 'bytes');
+                
                 if (this.onAudioData) {
                     this.onAudioData(pcmData);
                 }
@@ -90,7 +92,7 @@ class AudioCapture {
             view.setInt16(i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
         }
         
-        return Buffer.from(buffer);
+        return buffer;
     }
 
     stop() {

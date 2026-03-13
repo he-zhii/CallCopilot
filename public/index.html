@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CallCopilot</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <div class="status-bar">
+            <div class="status-left">
+                <div class="status-indicator" id="statusIndicator"></div>
+                <span class="status-text" id="statusText">未连接</span>
+            </div>
+            <div class="status-right">
+                <span class="timer" id="timer">00:00</span>
+                <svg class="icon-volume" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+                    <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                </svg>
+            </div>
+        </div>
+
+        <div class="transcript-area" id="transcriptArea">
+            <div class="transcript-empty" id="emptyState">点击下方按钮开始监听</div>
+        </div>
+
+        <div class="transcript-footer">
+            <button class="listen-btn start" id="listenBtn">
+                <svg class="icon-mic" id="micIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                    <line x1="12" x2="12" y1="19" y2="22"/>
+                </svg>
+                <svg class="icon-stop" id="stopIcon" style="display:none" viewBox="0 0 24 24" fill="currentColor">
+                    <rect x="6" y="6" width="12" height="12" rx="2"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <script src="js/ws-client.js"></script>
+    <script src="js/audio-capture.js"></script>
+    <script>
+        const listenBtn = document.getElementById('listenBtn');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const statusText = document.getElementById('statusText');
+        const timerEl = document.getElementById('timer');
+        const transcriptArea = document.getElementById('transcriptArea');
+        const emptyState = document.getElementById('emptyState');
+        const micIcon = document.getElementById('micIcon');
+        const stopIcon = document.getElementById('stopIcon');
+
+        const wsClient = new WSClient();
+        const audioCapture = new AudioCapture();
+
+        let isListening = false;
+        let startTime = null;
+        let timerInterval = null;
+        let currentTypingEl = null;
+        let lastPartialText = '';
+
+        wsClient.onStatusChange = (status, message) => {
+            console.log('[App] 状态变化:', status, message);
+            switch(status) {
+                case 'ready':
+                    statusIndicator.className = 'status-indicator connected';
+                    statusText.textContent = '已连接';
+                    break;
+                case 'error':
+                    statusIndicator.className = 'status-indicator error';
+                    statusText.textContent = '错误';
+                    if (message) alert('错误: ' + message);
+                    break;
+                case 'closed':
+                    statusIndicator.className = 'status-indicator';
+                    statusText.textContent = '已停止';
+                    break;
+            }
+        };
+
+        wsClient.onASRResult = (text, isPartial) => {
+            if (isPartial) {
+                updatePartialResult(text);
+            } else {
+                addFinalResult(text);
+            }
+        };
+
+        function updatePartialResult(text) {
+            if (currentTypingEl) {
+                currentTypingEl.querySelector('.message-content').textContent = text;
+            } else {
+                currentTypingEl = document.createElement('div');
+                currentTypingEl.className = 'message typing';
+                currentTypingEl.innerHTML = `<div class="message-content">${text}</div>`;
+                transcriptArea.appendChild(currentTypingEl);
+                if (emptyState) emptyState.style.display = 'none';
+            }
+            scrollToBottom();
+            lastPartialText = text;
+        }
+
+        function addFinalResult(text) {
+            if (currentTypingEl) {
+                currentTypingEl.classList.remove('typing');
+                currentTypingEl.querySelector('.message-content').textContent = text;
+                currentTypingEl = null;
+            } else if (text !== lastPartialText) {
+                const msgEl = document.createElement('div');
+                msgEl.className = 'message';
+                msgEl.innerHTML = `<div class="message-content">${text}</div>`;
+                transcriptArea.appendChild(msgEl);
+                if (emptyState) emptyState.style.display = 'none';
+            }
+            scrollToBottom();
+            lastPartialText = '';
+        }
+
+        function scrollToBottom() {
+            transcriptArea.scrollTop = transcriptArea.scrollHeight;
+        }
+
+        function formatTime(seconds) {
+            const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+            const s = (seconds % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        function startTimer() {
+            startTime = Date.now();
+            timerInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                timerEl.textContent = formatTime(elapsed);
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            startTime = null;
+            timerEl.textContent = '00:00';
+        }
+
+        async function startListening() {
+            try {
+                statusIndicator.className = 'status-indicator';
+                statusText.textContent = '连接中...';
+                
+                wsClient.connect();
+
+                await new Promise((resolve, reject) => {
+                    const checkConnection = setInterval(() => {
+                        if (wsClient.isConnected) {
+                            clearInterval(checkConnection);
+                            resolve();
+                        }
+                    }, 100);
+                    setTimeout(() => {
+                        clearInterval(checkConnection);
+                        reject(new Error('WebSocket连接超时'));
+                    }, 5000);
+                });
+
+                await audioCapture.start();
+                
+                audioCapture.onAudioData = (pcmData) => {
+                    wsClient.sendAudio(pcmData);
+                };
+
+                isListening = true;
+                listenBtn.className = 'listen-btn stop';
+                micIcon.style.display = 'none';
+                stopIcon.style.display = 'block';
+                statusIndicator.className = 'status-indicator listening';
+                statusText.textContent = '监听中';
+                
+                startTimer();
+            } catch (error) {
+                console.error('[App] 启动失败:', error);
+                alert('启动失败: ' + error.message);
+                statusIndicator.className = 'status-indicator error';
+                statusText.textContent = '启动失败';
+            }
+        }
+
+        function stopListening() {
+            isListening = false;
+            
+            audioCapture.stop();
+            wsClient.sendStop();
+            
+            listenBtn.className = 'listen-btn start';
+            micIcon.style.display = 'block';
+            stopIcon.style.display = 'none';
+            statusIndicator.className = 'status-indicator';
+            statusText.textContent = '已停止';
+            
+            stopTimer();
+        }
+
+        listenBtn.addEventListener('click', () => {
+            if (isListening) {
+                stopListening();
+            } else {
+                startListening();
+            }
+        });
+    </script>
+</body>
+</html>

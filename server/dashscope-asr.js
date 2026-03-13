@@ -8,6 +8,7 @@ class DashScopeASR {
         this.taskId = null;
         this.isConnected = false;
         this.isTaskStarted = false;
+        this.isStopped = false;
         this.onResultCallback = null;
         this.onErrorCallback = null;
         this.onCloseCallback = null;
@@ -37,6 +38,10 @@ class DashScopeASR {
             });
 
             this.ws.on('error', (error) => {
+                if (this.isStopped) {
+                    console.log('[DashScope ASR] 连接已关闭，忽略错误');
+                    return;
+                }
                 console.error('[DashScope ASR] WebSocket 错误:', error.message);
                 if (this.onErrorCallback) {
                     this.onErrorCallback(error);
@@ -135,6 +140,9 @@ class DashScopeASR {
     sendAudio(pcmBuffer) {
         if (this.ws && this.ws.readyState === WebSocket.OPEN && this.isTaskStarted) {
             this.ws.send(pcmBuffer);
+            console.log('[DashScope ASR] 发送音频数据:', pcmBuffer.length, 'bytes');
+        } else {
+            console.log('[DashScope ASR] 无法发送，状态:', this.ws?.readyState, 'taskStarted:', this.isTaskStarted);
         }
     }
 

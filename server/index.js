@@ -69,6 +69,7 @@ wss.on('connection', (ws) => {
 
     ws.on('message', (message) => {
         if (message instanceof Buffer) {
+            console.log('[Server] 收到音频数据:', message.length, 'bytes');
             if (isReady && asr) {
                 asr.sendAudio(message);
             }
