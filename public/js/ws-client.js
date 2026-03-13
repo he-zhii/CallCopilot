@@ -5,6 +5,8 @@ class WSClient {
         this.onStatusChange = null;
         this.onASRResult = null;
         this.onBubbleGroup = null;
+        this.onSessionSaved = null;
+        this.onSessionSaveFailed = null;
     }
 
     connect() {
@@ -39,6 +41,14 @@ class WSClient {
                     }
                 } else if (data.type === 'bubble_timeline') {
                     console.log('[WSClient] 收到 bubble_timeline:', data.data);
+                } else if (data.type === 'session_saved') {
+                    if (this.onSessionSaved) {
+                        this.onSessionSaved(data.data);
+                    }
+                } else if (data.type === 'session_save_failed') {
+                    if (this.onSessionSaveFailed) {
+                        this.onSessionSaveFailed(data.message);
+                    }
                 }
             } catch (e) {
                 console.error('[WSClient] 解析消息失败:', e);

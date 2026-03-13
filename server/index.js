@@ -7,6 +7,7 @@ const DashScopeASR = require('./dashscope-asr');
 const LLMEngine = require('./llm-engine');
 const DialogueManager = require('./dialogue-manager');
 const BubbleCache = require('./bubble-cache');
+const { createSessionManager } = require('./session-manager');
 
 const app = express();
 const server = http.createServer(app);
@@ -19,9 +20,11 @@ if (!API_KEY) {
 }
 
 app.use(express.static(path.join(__dirname, '../public')));
+app.use(express.json());
 
 const llmEngine = new LLMEngine(API_KEY);
 const bubbleCache = new BubbleCache();
+const sessionManager = createSessionManager(llmEngine);
 
 function createDialogueManager() {
     const dm = new DialogueManager(llmEngine, bubbleCache);
@@ -48,12 +51,57 @@ function broadcastToAll(msg) {
     });
 }
 
+function sendToClient(ws, msg) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(msg));
+    }
+}
+
+app.get('/api/sessions', async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 20;
+        const offset = parseInt(req.query.offset) || 0;
+        
+        const sessions = await sessionManager.listSessions(limit, offset);
+        const total = await sessionManager.getSessionCount();
+        
+        res.json({ sessions, total });
+    } catch (error) {
+        console.error('[API] 获取sessions失败:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/sessions/:id', async (req, res) => {
+    try {
+        const session = await sessionManager.getSession(req.params.id);
+        if (!session) {
+            return res.status(404).json({ error: 'Session not found' });
+        }
+        res.json(session);
+    } catch (error) {
+        console.error('[API] 获取session详情失败:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.delete('/api/sessions/:id', async (req, res) => {
+    try {
+        await sessionManager.deleteSession(req.params.id);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('[API] 删除session失败:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 wss.on('connection', (ws) => {
     console.log('[Server] 前端 WebSocket 连接已建立');
 
     dialogueManager.destroy();
     dialogueManager = createDialogueManager();
     bubbleCache.clear();
+    sessionManager.reset();
 
     let asr = null;
     let isReady = false;
@@ -80,7 +128,10 @@ wss.on('connection', (ws) => {
             isPartial: result.isPartial
         });
 
-        dialogueManager.addTranscript(result.text, result.isPartial);
+        if (!result.isPartial) {
+            dialogueManager.addTranscript(result.text, result.isPartial);
+            sessionManager.addTranscript(result.text, Date.now());
+        }
     });
 
     asr.onError((error) => {
@@ -98,9 +149,13 @@ wss.on('connection', (ws) => {
     });
 
     asr.start()
-        .then(() => {
+        .then(async () => {
             console.log('[Server] ASR 已就绪');
             isReady = true;
+            
+            const userContext = '';
+            await sessionManager.startSession(userContext);
+            
             sendMessage({ type: 'status', status: 'ready' });
         })
         .catch((error) => {
@@ -120,19 +175,42 @@ wss.on('connection', (ws) => {
                 if (data.type === 'stop') {
                     console.log('[Server] 收到停止指令');
                     isClosed = true;
+                    
                     if (asr) {
                         asr.stop().then(() => {
                             console.log('[Server] ASR 已停止');
                         });
                     }
+                    
                     dialogueManager.destroy();
                     bubbleCache.clear();
+                    
                     sendMessage({ type: 'status', status: 'closed', message: '监听已停止' });
+
+                    sessionManager.endSession()
+                        .then(result => {
+                            if (result) {
+                                sendMessage({
+                                    type: 'session_saved',
+                                    data: result
+                                });
+                            }
+                        })
+                        .catch(error => {
+                            sendMessage({
+                                type: 'session_save_failed',
+                                message: error.message
+                            });
+                        });
                 }
                 
                 if (data.type === 'set_context') {
                     dialogueManager.setUserContext(data.context || '');
                     sendMessage({ type: 'status', status: 'ready', message: '上下文已设置' });
+                    
+                    if (sessionManager.getCurrentSession()) {
+                        sessionManager.startSession(data.context || '');
+                    }
                 }
                 
                 if (data.type === 'get_bubbles') {

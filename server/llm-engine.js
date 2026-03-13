@@ -174,6 +174,54 @@ class LLMEngine {
     isGeneratingStatus() {
         return this.isGenerating;
     }
+
+    async generateSummary(transcript, userContext) {
+        const transcriptText = transcript.map(t => t.text).join('\n');
+        
+        const summaryPrompt = `你是一个通话摘要助手。根据以下通话记录生成简洁摘要。
+要求：
+1. 不超过 100 字
+2. 包含通话主题、关键讨论点、后续行动
+3. 第三人称叙述
+4. 只输出纯文本，不要格式标记
+
+【用户背景】${userContext || '无'}
+【通话记录】
+${transcriptText}`;
+
+        try {
+            const response = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.apiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'qwen-turbo',
+                    messages: [
+                        { role: 'system', content: summaryPrompt },
+                        { role: 'user', content: '请生成摘要' }
+                    ],
+                    temperature: 0.3,
+                    max_tokens: 200
+                })
+            });
+
+            const data = await response.json();
+            
+            if (!data.choices || !data.choices[0]) {
+                console.error('[LLM] 摘要生成失败:', data);
+                return null;
+            }
+
+            const summary = data.choices[0].message.content?.trim();
+            console.log(`[LLM] 摘要生成成功: ${summary?.substring(0, 50)}...`);
+            return summary;
+        } catch (error) {
+            console.error('[LLM] 摘要生成异常:', error.message);
+            return null;
+        }
+    }
 }
 
 module.exports = LLMEngine;
