@@ -335,6 +335,7 @@ task-failed 事件：
 - **Step 4 完成后**：README 写好，手机能访问
 
 如果 Step 3 遇到问题，优先排查：
+
 1. DashScope API Key 是否正确
 2. WebSocket 连接是否成功建立（看后端日志）
 3. run-task 指令发送后是否收到 task-started 事件

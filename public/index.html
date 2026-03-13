@@ -8,75 +8,166 @@
 </head>
 <body>
     <div class="app-container">
-        <div class="status-bar">
+        <header class="status-bar">
             <div class="status-left">
-                <div class="status-indicator" id="statusIndicator"></div>
-                <span class="status-text" id="statusText">未连接</span>
+                <div class="app-title">CallCopilot</div>
+                <div class="connection-status">
+                    <span class="status-dot" id="statusDot"></span>
+                    <span class="status-label" id="statusLabel">未连接</span>
+                </div>
             </div>
             <div class="status-right">
                 <span class="timer" id="timer">00:00</span>
-                <svg class="icon-volume" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
-                    <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-                </svg>
+                <button class="settings-btn" id="settingsBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <div class="settings-panel" id="settingsPanel">
+            <div class="settings-content">
+                <textarea 
+                    id="contextInput" 
+                    class="context-input" 
+                    placeholder="输入通话背景信息（可选），如：客户姓李，之前拍了3999套餐..."
+                    rows="3"
+                ></textarea>
+                <button class="save-btn" id="saveContextBtn">保存</button>
             </div>
         </div>
 
-        <div class="transcript-area" id="transcriptArea">
-            <div class="transcript-empty" id="emptyState">点击下方按钮开始监听</div>
+        <main class="transcript-area" id="transcriptArea">
+            <div class="transcript-empty" id="emptyState">
+                <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                    <line x1="12" x2="12" y1="19" y2="22"/>
+                </svg>
+                <span>点击下方按钮开始监听</span>
+            </div>
+        </main>
+
+        <div class="scroll-to-bottom" id="scrollToBottomBtn" style="display: none;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"/>
+            </svg>
         </div>
 
-        <div class="transcript-footer">
-            <button class="listen-btn start" id="listenBtn">
+        <div class="overlay" id="overlay"></div>
+
+        <div class="bubble-panel" id="bubblePanel">
+            <div class="panel-drag-handle"></div>
+            <div class="panel-header">
+                <span class="panel-title">话术建议</span>
+            </div>
+            <div class="bubble-timeline" id="bubbleTimeline">
+                <div class="bubble-empty" id="bubbleEmptyState">
+                    <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </svg>
+                    <span id="bubbleEmptyText">开始监听后，AI 会实时生成话术建议</span>
+                </div>
+            </div>
+        </div>
+
+        <footer class="action-bar">
+            <button class="listen-btn" id="listenBtn">
                 <svg class="icon-mic" id="micIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
                     <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
                     <line x1="12" x2="12" y1="19" y2="22"/>
                 </svg>
-                <svg class="icon-stop" id="stopIcon" style="display:none" viewBox="0 0 24 24" fill="currentColor">
+                <svg class="icon-stop" id="stopIcon" viewBox="0 0 24 24" fill="currentColor">
                     <rect x="6" y="6" width="12" height="12" rx="2"/>
                 </svg>
             </button>
-        </div>
+            <div class="status-info" id="statusInfo"></div>
+            <button class="fab-btn" id="fabBtn">
+                <svg class="icon-bubble" id="bubbleIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                <svg class="icon-close" id="closeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+                <span class="fab-notification" id="fabNotification"></span>
+            </button>
+        </footer>
     </div>
 
     <script src="js/ws-client.js"></script>
     <script src="js/audio-capture.js"></script>
+    <script src="js/bubble-ui.js"></script>
     <script>
         const listenBtn = document.getElementById('listenBtn');
-        const statusIndicator = document.getElementById('statusIndicator');
-        const statusText = document.getElementById('statusText');
+        const fabBtn = document.getElementById('fabBtn');
+        const statusDot = document.getElementById('statusDot');
+        const statusLabel = document.getElementById('statusLabel');
         const timerEl = document.getElementById('timer');
         const transcriptArea = document.getElementById('transcriptArea');
         const emptyState = document.getElementById('emptyState');
         const micIcon = document.getElementById('micIcon');
         const stopIcon = document.getElementById('stopIcon');
+        const bubbleIcon = document.getElementById('bubbleIcon');
+        const closeIcon = document.getElementById('closeIcon');
+        const fabNotification = document.getElementById('fabNotification');
+        const settingsBtn = document.getElementById('settingsBtn');
+        const settingsPanel = document.getElementById('settingsPanel');
+        const contextInput = document.getElementById('contextInput');
+        const saveContextBtn = document.getElementById('saveContextBtn');
+        const statusInfo = document.getElementById('statusInfo');
+        const scrollToBottomBtn = document.getElementById('scrollToBottomBtn');
+        const overlay = document.getElementById('overlay');
 
         const wsClient = new WSClient();
         const audioCapture = new AudioCapture();
+        let bubbleUI = null;
 
         let isListening = false;
         let startTime = null;
         let timerInterval = null;
         let currentTypingEl = null;
         let lastPartialText = '';
+        let bubbleCount = 0;
+        let isUserScrolling = false;
+
+        function updateConnectionStatus(status) {
+            statusDot.className = 'status-dot';
+            if (status === 'connected' || status === 'ready') {
+                statusDot.classList.add('connected');
+                statusLabel.textContent = '已连接';
+            } else if (status === 'listening') {
+                statusDot.classList.add('listening');
+                statusLabel.textContent = '监听中';
+            } else if (status === 'connecting') {
+                statusDot.classList.add('connecting');
+                statusLabel.textContent = '连接中...';
+            } else if (status === 'error') {
+                statusDot.classList.add('error');
+                statusLabel.textContent = '连接错误';
+            } else {
+                statusLabel.textContent = '未连接';
+            }
+        }
 
         wsClient.onStatusChange = (status, message) => {
             console.log('[App] 状态变化:', status, message);
             switch(status) {
                 case 'ready':
-                    statusIndicator.className = 'status-indicator connected';
-                    statusText.textContent = '已连接';
+                    updateConnectionStatus('ready');
+                    enableFab();
                     break;
                 case 'error':
-                    statusIndicator.className = 'status-indicator error';
-                    statusText.textContent = '错误';
+                    updateConnectionStatus('error');
+                    disableFab();
                     if (message) alert('错误: ' + message);
                     break;
                 case 'closed':
-                    statusIndicator.className = 'status-indicator';
-                    statusText.textContent = '已停止';
+                    updateConnectionStatus('closed');
+                    disableFab();
                     break;
             }
         };
@@ -89,38 +180,88 @@
             }
         };
 
+        wsClient.onBubbleGroup = (data) => {
+            if (bubbleUI) {
+                bubbleUI.addBubbleGroup(data);
+                if (!bubbleUI.isPanelOpen()) {
+                    showFabNotification();
+                }
+                bubbleCount = (bubbleCount || 0) + 1;
+                updateStatusInfo();
+            }
+        };
+
         function updatePartialResult(text) {
             if (currentTypingEl) {
-                currentTypingEl.querySelector('.message-content').textContent = text;
+                currentTypingEl.querySelector('.message-content').innerHTML = `${text}<span class="cursor"></span>`;
             } else {
                 currentTypingEl = document.createElement('div');
                 currentTypingEl.className = 'message typing';
-                currentTypingEl.innerHTML = `<div class="message-content">${text}</div>`;
+                currentTypingEl.innerHTML = `<span class="message-time">${formatTimeNow()}</span><div class="message-content">${text}<span class="cursor"></span></div>`;
                 transcriptArea.appendChild(currentTypingEl);
                 if (emptyState) emptyState.style.display = 'none';
             }
-            scrollToBottom();
+            if (!isUserScrolling) {
+                scrollToBottom();
+            } else {
+                showScrollToBottomBtn();
+            }
             lastPartialText = text;
         }
 
         function addFinalResult(text) {
             if (currentTypingEl) {
                 currentTypingEl.classList.remove('typing');
-                currentTypingEl.querySelector('.message-content').textContent = text;
+                currentTypingEl.querySelector('.message-content').innerHTML = text;
                 currentTypingEl = null;
             } else if (text !== lastPartialText) {
                 const msgEl = document.createElement('div');
                 msgEl.className = 'message';
-                msgEl.innerHTML = `<div class="message-content">${text}</div>`;
+                msgEl.innerHTML = `<span class="message-time">${formatTimeNow()}</span><div class="message-content">${text}</div>`;
                 transcriptArea.appendChild(msgEl);
                 if (emptyState) emptyState.style.display = 'none';
             }
-            scrollToBottom();
+            if (!isUserScrolling) {
+                scrollToBottom();
+            } else {
+                showScrollToBottomBtn();
+            }
             lastPartialText = '';
         }
 
         function scrollToBottom() {
-            transcriptArea.scrollTop = transcriptArea.scrollHeight;
+            transcriptArea.scrollTo({
+                top: transcriptArea.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
+
+        function showScrollToBottomBtn() {
+            const isAtBottom = transcriptArea.scrollHeight - transcriptArea.scrollTop - transcriptArea.clientHeight < 100;
+            if (!isAtBottom) {
+                scrollToBottomBtn.style.display = 'flex';
+            }
+        }
+
+        scrollToBottomBtn.addEventListener('click', () => {
+            isUserScrolling = false;
+            scrollToBottomBtn.style.display = 'none';
+            scrollToBottom();
+        });
+
+        transcriptArea.addEventListener('scroll', () => {
+            const isAtBottom = transcriptArea.scrollHeight - transcriptArea.scrollTop - transcriptArea.clientHeight < 100;
+            if (isAtBottom) {
+                isUserScrolling = false;
+                scrollToBottomBtn.style.display = 'none';
+            } else {
+                isUserScrolling = true;
+            }
+        });
+
+        function formatTimeNow() {
+            const now = new Date();
+            return now.toTimeString().slice(0, 8);
         }
 
         function formatTime(seconds) {
@@ -144,10 +285,44 @@
             timerEl.textContent = '00:00';
         }
 
+        function updateStatusInfo() {
+            if (isListening && bubbleCount > 0) {
+                statusInfo.textContent = `监听中 · 已生成 ${bubbleCount} 组建议`;
+            } else if (isListening) {
+                statusInfo.textContent = '监听中';
+            } else {
+                statusInfo.textContent = '';
+            }
+        }
+
+        function enableFab() {
+            fabBtn.classList.remove('disabled');
+            if (!bubbleUI || !bubbleUI.isPanelOpen()) {
+                fabBtn.classList.remove('panel-open');
+            }
+        }
+
+        function disableFab() {
+            fabBtn.classList.add('disabled');
+            fabBtn.classList.remove('has-notification', 'panel-open');
+            fabNotification.style.display = 'none';
+        }
+
+        function showFabNotification() {
+            if (!fabBtn.classList.contains('disabled') && !bubbleUI?.isPanelOpen()) {
+                fabBtn.classList.add('has-notification');
+                fabNotification.style.display = 'block';
+            }
+        }
+
+        function hideFabNotification() {
+            fabBtn.classList.remove('has-notification');
+            fabNotification.style.display = 'none';
+        }
+
         async function startListening() {
             try {
-                statusIndicator.className = 'status-indicator';
-                statusText.textContent = '连接中...';
+                updateConnectionStatus('connecting');
                 
                 wsClient.connect();
 
@@ -171,18 +346,21 @@
                 };
 
                 isListening = true;
-                listenBtn.className = 'listen-btn stop';
+                listenBtn.classList.add('stop');
                 micIcon.style.display = 'none';
                 stopIcon.style.display = 'block';
-                statusIndicator.className = 'status-indicator listening';
-                statusText.textContent = '监听中';
                 
+                updateConnectionStatus('listening');
                 startTimer();
+                updateStatusInfo();
+                
+                if (bubbleUI) {
+                    bubbleUI.updateEmptyState(true);
+                }
             } catch (error) {
                 console.error('[App] 启动失败:', error);
                 alert('启动失败: ' + error.message);
-                statusIndicator.className = 'status-indicator error';
-                statusText.textContent = '启动失败';
+                updateConnectionStatus('error');
             }
         }
 
@@ -192,13 +370,18 @@
             audioCapture.stop();
             wsClient.sendStop();
             
-            listenBtn.className = 'listen-btn start';
+            listenBtn.classList.remove('stop');
             micIcon.style.display = 'block';
             stopIcon.style.display = 'none';
-            statusIndicator.className = 'status-indicator';
-            statusText.textContent = '已停止';
             
+            updateConnectionStatus('closed');
             stopTimer();
+            updateStatusInfo();
+            
+            bubbleCount = 0;
+            if (bubbleUI) {
+                bubbleUI.updateEmptyState(false);
+            }
         }
 
         listenBtn.addEventListener('click', () => {
@@ -208,6 +391,64 @@
                 startListening();
             }
         });
+
+        fabBtn.addEventListener('click', () => {
+            if (fabBtn.classList.contains('disabled')) return;
+            
+            if (bubbleUI) {
+                bubbleUI.togglePanel();
+                const isOpen = bubbleUI.isPanelOpen();
+                
+                if (isOpen) {
+                    fabBtn.classList.add('panel-open');
+                    hideFabNotification();
+                } else {
+                    fabBtn.classList.remove('panel-open');
+                }
+            }
+        });
+
+        overlay.addEventListener('click', () => {
+            if (bubbleUI && bubbleUI.isPanelOpen()) {
+                bubbleUI.togglePanel();
+                fabBtn.classList.remove('panel-open');
+            }
+        });
+
+        settingsBtn.addEventListener('click', () => {
+            settingsPanel.classList.toggle('open');
+        });
+
+        saveContextBtn.addEventListener('click', () => {
+            const context = contextInput.value.trim();
+            wsClient.sendContext(context);
+            settingsPanel.classList.remove('open');
+        });
+
+        window.addEventListener('DOMContentLoaded', () => {
+            bubbleUI = new BubbleUI();
+        });
+
+        window.__debug = {
+            getBubbleTimeline: () => bubbleUI ? bubbleUI.getTimeline() : [],
+            simulateBubble: () => {
+                const mockData = {
+                    id: 'test-' + Date.now(),
+                    context_summary: '对方在问能不能打折',
+                    bubbles: [
+                        { preview: '老客福利', full_text: '李姐您是老客户了，带朋友来两位一起有专属折扣', strategy: '老带新' },
+                        { preview: '升级更值', full_text: '其实加800升级套餐多一组外景，算下来单价更低', strategy: '推升级' },
+                        { preview: '帮您问问', full_text: '价格我不太好做主，帮您跟店长申请个特别优惠', strategy: '缓兵之计' }
+                    ],
+                    generated_at: Date.now()
+                };
+                if (bubbleUI) {
+                    bubbleUI.addBubbleGroup(mockData);
+                    showFabNotification();
+                }
+            },
+            togglePanel: () => bubbleUI && bubbleUI.togglePanel()
+        };
     </script>
 </body>
 </html>

@@ -4,6 +4,7 @@ class WSClient {
         this.isConnected = false;
         this.onStatusChange = null;
         this.onASRResult = null;
+        this.onBubbleGroup = null;
     }
 
     connect() {
@@ -32,6 +33,12 @@ class WSClient {
                     if (this.onASRResult) {
                         this.onASRResult(data.text, data.isPartial);
                     }
+                } else if (data.type === 'bubble_group') {
+                    if (this.onBubbleGroup) {
+                        this.onBubbleGroup(data.data);
+                    }
+                } else if (data.type === 'bubble_timeline') {
+                    console.log('[WSClient] 收到 bubble_timeline:', data.data);
                 }
             } catch (e) {
                 console.error('[WSClient] 解析消息失败:', e);
@@ -57,14 +64,24 @@ class WSClient {
     sendAudio(pcmBuffer) {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             this.ws.send(pcmBuffer);
-        } else {
-            console.log('[WSClient] WebSocket未就绪，状态:', this.ws?.readyState);
         }
     }
 
     sendStop() {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             this.ws.send(JSON.stringify({ type: 'stop' }));
+        }
+    }
+
+    sendContext(context) {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify({ type: 'set_context', context: context }));
+        }
+    }
+
+    getBubbles() {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify({ type: 'get_bubbles' }));
         }
     }
 

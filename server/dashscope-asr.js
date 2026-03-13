@@ -127,6 +127,10 @@ class DashScopeASR {
             } else if (event === 'task-finished') {
                 console.log('[DashScope ASR] 任务完成', msg.payload?.usage?.duration ? `时长: ${msg.payload.usage.duration}s` : '');
             } else if (event === 'task-failed') {
+                if (this.isStopped) {
+                    console.log('[DashScope ASR] 任务已停止，忽略失败事件');
+                    return;
+                }
                 console.error('[DashScope ASR] 任务失败:', msg.header?.error_message);
                 if (this.onErrorCallback) {
                     this.onErrorCallback(new Error(msg.header?.error_message || 'ASR 任务失败'));
@@ -140,43 +144,45 @@ class DashScopeASR {
     sendAudio(pcmBuffer) {
         if (this.ws && this.ws.readyState === WebSocket.OPEN && this.isTaskStarted) {
             this.ws.send(pcmBuffer);
-            console.log('[DashScope ASR] 发送音频数据:', pcmBuffer.length, 'bytes');
-        } else {
-            console.log('[DashScope ASR] 无法发送，状态:', this.ws?.readyState, 'taskStarted:', this.isTaskStarted);
         }
     }
 
     stop() {
         return new Promise((resolve) => {
-            if (!this.isTaskStarted || !this.ws) {
+            this.isStopped = true;
+            
+            if (!this.ws) {
                 resolve();
                 return;
             }
 
-            const finishMsg = {
-                header: {
-                    action: 'finish-task',
-                    task_id: this.taskId,
-                    streaming: 'duplex'
-                },
-                payload: {
-                    input: {}
-                }
-            };
-            this.ws.send(JSON.stringify(finishMsg));
-            console.log('[DashScope ASR] 已发送 finish-task 指令');
+            console.log('[DashScope ASR] 停止任务');
 
-            const timeout = setTimeout(() => {
+            if (this.ws.readyState === WebSocket.OPEN) {
+                try {
+                    const finishMsg = {
+                        header: {
+                            action: 'finish-task',
+                            task_id: this.taskId,
+                            streaming: 'duplex'
+                        },
+                        payload: {
+                            input: {}
+                        }
+                    };
+                    this.ws.send(JSON.stringify(finishMsg));
+                    console.log('[DashScope ASR] 已发送 finish-task 指令');
+                } catch (e) {
+                    console.log('[DashScope ASR] 发送 finish-task 失败:', e.message);
+                }
+            }
+
+            setTimeout(() => {
                 if (this.ws) {
                     this.ws.close();
                 }
                 resolve();
-            }, 3000);
-
-            this._resolveStop = () => {
-                clearTimeout(timeout);
-                resolve();
-            };
+            }, 500);
         });
     }
 
