@@ -465,12 +465,6 @@
             settingsPanel.classList.toggle('open');
         });
 
-        menuBtn.addEventListener('click', () => {
-            if (sidebar) {
-                sidebar.open();
-            }
-        });
-
         saveContextBtn.addEventListener('click', () => {
             const context = contextInput.value.trim();
             wsClient.sendContext(context);
@@ -478,9 +472,20 @@
         });
 
         window.addEventListener('DOMContentLoaded', () => {
+            console.log('DOMContentLoaded 触发');
             bubbleUI = new BubbleUI();
             sidebar = new Sidebar();
+            console.log('Sidebar 初始化完成:', sidebar);
             sessionSaveToast = document.getElementById('sessionSaveToast');
+            
+            menuBtn.addEventListener('click', () => {
+                console.log('MenuBtn 点击, sidebar:', sidebar);
+                if (sidebar) {
+                    sidebar.open();
+                } else {
+                    console.error('Sidebar 未初始化');
+                }
+            });
         });
 
         window.__debug = {
