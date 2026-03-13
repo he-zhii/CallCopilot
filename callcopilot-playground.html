@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CallCopilot UI Design Playground</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=LXGW+WenKai:wght@400;700&family=Outfit:wght@400;500;600;700&family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: 'DM Sans', 'Noto Sans SC', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #fff;
+    }
+    #root { padding: 20px; }
+    
+    .playground-container { max-width: 1400px; margin: 0 auto; }
+    .playground-title { 
+      text-align: center; 
+      margin-bottom: 8px;
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+    .playground-subtitle {
+      text-align: center;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 32px;
+      font-size: 14px;
+    }
+    
+    .tab-container {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 32px;
+    }
+    .tab-btn {
+      padding: 12px 28px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      background: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.6);
+    }
+    .tab-btn:hover { background: rgba(255,255,255,0.15); }
+    .tab-btn.active { 
+      background: rgba(255,255,255,0.2); 
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    .tab-btn[data-theme="clean"].active { background: linear-gradient(135deg, #2563EB, #1D4ED8); }
+    
+    .demo-controls {
+      background: rgba(0,0,0,0.3);
+      border-radius: 16px;
+      padding: 20px 28px;
+      margin-bottom: 32px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .controls-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .control-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .control-btn.play { background: #22C55E; color: #fff; }
+    .control-btn.play:hover { background: #16A34A; }
+    .control-btn.pause { background: #F59E0B; color: #fff; }
+    .control-btn.pause:hover { background: #D97706; }
+    .control-btn.reset { background: rgba(255,255,255,0.15); color: #fff; }
+    .control-btn.reset:hover { background: rgba(255,255,255,0.25); }
+    
+    .time-display {
+      font-family: 'Geist Mono', 'SF Mono', monospace;
+      font-size: 18px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.9);
+      min-width: 60px;
+    }
+    
+    .progress-bar {
+      flex: 1;
+      height: 8px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 4px;
+      position: relative;
+      cursor: pointer;
+      min-width: 200px;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: linear-gradient(90deg, #7C5CFC, #00D4FF);
+      transition: width 0.1s;
+    }
+    .bubble-markers {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+    }
+    .bubble-marker {
+      position: absolute;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 12px;
+      height: 12px;
+      background: #FF6B35;
+      border-radius: 50%;
+      border: 2px solid rgba(0,0,0,0.5);
+    }
+    
+    .phone-wrapper {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      flex-wrap: wrap;
+    }
+    .phone-display {
+      position: relative;
+    }
+    .phone-frame {
+      width: 390px;
+      height: 844px;
+      border-radius: 44px;
+      border: 10px solid #1a1a1a;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 25px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.1);
+      background: #000;
+    }
+    .phone-frame::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 160px;
+      height: 36px;
+      background: #1a1a1a;
+      border-radius: 0 0 22px 22px;
+      z-index: 100;
+    }
+    .phone-frame::after {
+      content: '';
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 140px;
+      height: 5px;
+      background: rgba(255,255,255,0.3);
+      border-radius: 3px;
+      z-index: 100;
+    }
+    .phone-screen {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      position: relative;
+    }
+    
+    .theme-description {
+      max-width: 600px;
+      margin: 40px auto 0;
+      text-align: center;
+      padding: 24px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .theme-description h3 {
+      font-size: 18px;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+    .theme-description p {
+      font-size: 14px;
+      color: rgba(255,255,255,0.6);
+      line-height: 1.7;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.2); opacity: 0.7; }
+    }
+    @keyframes blink {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0; }
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes glow {
+      0%, 100% { box-shadow: 0 0 20px rgba(124,92,252,0.3); }
+      50% { box-shadow: 0 0 40px rgba(124,92,252,0.6), 0 0 60px rgba(0,212,255,0.3); }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback, useMemo } = React;
+    
+    // Lucide Icons as SVG components
+    const Icons = {
+      Mic: ({ size = 20, color = "currentColor" }) => (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" x2="12" y1="19" y2="22"/>
+        </svg>
+      ),
+      MicOff: ({ size = 20, color = "currentColor" }) => (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="2" x2="22" y1="2" y2="22"/>
+          <path d="M18.89 13.23A7.12 7.12 0 0 0 19 12v-2"/>
+          <path d="M5 10v2a7 7 0 0 0 12 5"/>
+          <path d="M15 9.34V5a3 3 0 0 0-5.68-1.33"/>
+          <path d="M9 9v3a3 3 0 0 0 5.12 2.12"/>
+          <line x1="12" x2="12" y1="19" y2="22"/>
+        </svg>
+      ),
+      MessageCircle: ({ size = 20, color = "currentColor" }) => (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>
+        </svg>
+      ),
+      X: ({ size = 20, color = "currentColor" }) => (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+        </svg>
+      ),
+      Play: ({ size = 20, color = "currentColor" }) => (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill={color} stroke="none">
+          <polygon points="5 3 19 12 5 21 5 3"/>
+        </svg>
+      ),
+      Pause: ({ size = 20, color = "currentColor" }) => (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill={color} stroke="none">
+          <rect x="6" y="4" width="4" height="16"/>
+          <rect x="14" y="4" width="4" height="16"/>
+        </svg>
+      ),
+      RotateCcw: ({ size = 20, color = "currentColor" }) => (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+          <path d="M3 3v5h5"/>
+        </svg>
+      ),
+      Phone: ({ size = 20, color = "currentColor" }) => (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+        </svg>
+      ),
+      User: ({ size = 20, color = "currentColor" }) => (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+      ),
+      Clock: ({ size = 20, color = "currentColor" }) => (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+      ),
+      ChevronDown: ({ size = 20, color = "currentColor" }) => (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="m6 9 6 6 6-6"/>
+        </svg>
+      ),
+      Volume2: ({ size = 20, color = "currentColor" }) => (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+        </svg>
+      )
+    };
+
+    // Demo Script Data
+    const demoScript = [
+      { time: 0, type: 'call_start' },
+      { time: 0, type: 'message', speaker: 'me', text: '李姐您好，我是XX摄影的小陈，上次给您拍的照片您收到了吗？' },
+      { time: 5, type: 'message', speaker: 'other', text: '收到了收到了，整体还行吧。' },
+      { time: 10, type: 'message', speaker: 'me', text: '那就好，您看看有没有特别喜欢的几张？' },
+      { time: 15, type: 'message', speaker: 'other', text: '有几张确实挺好看的，但是有几张修图好像不太细致。' },
+      { time: 16, type: 'bubble_group', context: '客户反馈修图问题', bubbles: [
+        { preview: '先道歉', fullText: '真的很抱歉给您带来不好的体验，这个我们肯定要解决的', strategy: '共情优先' },
+        { preview: '了解细节', fullText: '您方便说一下具体是哪几张吗？我让修图师针对性调整', strategy: '定位问题' },
+        { preview: '安排重修', fullText: '您放心，我直接安排重新修一版，这两天就给您', strategy: '快速行动' }
+      ]},
+      { time: 25, type: 'message', speaker: 'me', text: '哦那确实不好意思，我回头让修图师再看看。' },
+      { time: 30, type: 'message', speaker: 'other', text: '嗯，还有就是你们这个套餐能不能便宜点？我朋友也想拍。' },
+      { time: 31, type: 'bubble_group', context: '客户砍价+带新客户', bubbles: [
+        { preview: '老客户福利', fullText: '李姐，您是老客户了，带朋友来的话两位一起有专属折扣', strategy: '情感维系' },
+        { preview: '升级更值', fullText: '其实加800升级套餐，多一组外景，算下来单价反而更低', strategy: '价值引导' },
+        { preview: '帮您问问', fullText: '价格我不太好做主，我帮您跟店长申请个特别优惠', strategy: '留有余地' }
+      ]},
+      { time: 45, type: 'message', speaker: 'other', text: '你们这价格，是把金子镶上去了吧？（开玩笑语气）' },
+      { time: 46, type: 'bubble_group', context: '幽默应对', bubbles: [
+        { preview: '哈哈镀金的', fullText: '哈哈李姐，那可不是金子，是我们摄影师的手艺镶上去的', strategy: '幽默化解' },
+        { preview: '值这个价', fullText: '您这么说我都不好意思了，不过看完成片肯定觉得值', strategy: '自信展示' },
+        { preview: '给您看看', fullText: '要不我发几张最近的客片给您看看，眼见为实', strategy: '用证据说话' }
+      ]},
+      { time: 60, type: 'message', speaker: 'other', text: '行吧，你把优惠方案发我微信，我跟朋友商量商量。' },
+      { time: 61, type: 'bubble_group', context: '促成转化', bubbles: [
+        { preview: '马上发您', fullText: '好的李姐，我整理一下方案十分钟内发您微信', strategy: '立即行动' },
+        { preview: '限时优惠', fullText: '李姐这个月底前定的话还有额外赠品，我一起发您', strategy: '制造紧迫' },
+        { preview: '约个时间', fullText: '要不我约个时间带您朋友来店里看看？现场感受更直观', strategy: '推动面谈' }
+      ]}
+    ];
+
+    const SCRIPT_DURATION = 75;
+
+    // Theme configurations
+    const themes = {
+      clean: {
+        name: 'Clean Professional',
+        description: '极简商务风，像 Linear / Notion 的设计语言。传达信任感和专业度。',
+        bgPrimary: '#FFFFFF',
+        bgSecondary: '#F8F9FA',
+        textPrimary: '#111827',
+        textSecondary: '#6B7280',
+        accent: '#2563EB',
+        bubbleBg: '#FFFFFF',
+        bubbleBorder: '#E5E7EB',
+        bubbleActive: '#EFF6FF',
+        panelBg: 'rgba(255,255,255,0.98)',
+        fabBg: '#2563EB',
+        fontFamily: '"DM Sans", "Noto Sans SC", sans-serif',
+        radiusBubble: '12px',
+        shadowBubble: '0 2px 8px rgba(0,0,0,0.08)',
+        bubbleText: '#111827',
+        messageOther: '#1F2937',
+        messageMe: '#2563EB',
+        messageOtherBg: '#F3F4F6',
+        messageMeBg: '#DBEAFE',
+        transition: 'cubic-bezier(0.32, 0.72, 0, 1)',
+        showAvatars: false
+      }
+    };
+
+    // Phone Screen Component
+    function PhoneScreen({ theme, demoState, onBubbleClick }) {
+      const themeConfig = themes[theme];
+      const scrollRef = useRef(null);
+      const [contextInput, setContextInput] = useState('');
+      const [showCallInterface, setShowCallInterface] = useState(false);
+      
+      useEffect(() => {
+        if (scrollRef.current && demoState.messages.length > 0) {
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+      }, [demoState.messages]);
+
+      const handleStartCall = () => {
+        if (contextInput.trim()) {
+          setShowCallInterface(true);
+        }
+      };
+
+      // Pre-call interface
+      if (!showCallInterface) {
+        return (
+          <div style={{
+            width: '100%',
+            height: '100%',
+            background: themeConfig.bgPrimary,
+            display: 'flex',
+            flexDirection: 'column',
+            padding: '40px 24px',
+            fontFamily: themeConfig.fontFamily
+          }}>
+            <div style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center'
+            }}>
+              <div style={{
+                textAlign: 'center',
+                marginBottom: 40
+              }}>
+                <div style={{
+                  width: 80,
+                  height: 80,
+                  borderRadius: 24,
+                  background: themeConfig.accent,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 20px',
+                  boxShadow: themeConfig.shadowBubble
+                }}>
+                  <Icons.Phone size={36} color="#fff" />
+                </div>
+                <h2 style={{
+                  color: themeConfig.textPrimary,
+                  fontSize: 22,
+                  fontWeight: 700,
+                  marginBottom: 8
+                }}>准备通话</h2>
+                <p style={{
+                  color: themeConfig.textSecondary,
+                  fontSize: 14
+                }}>输入通话背景信息，AI 将为您生成实时话术建议</p>
+              </div>
+              
+              <textarea
+                value={contextInput}
+                onChange={(e) => setContextInput(e.target.value)}
+                placeholder="输入通话背景信息，如：客户姓李，之前拍了3999套餐，这次是回访..."
+                style={{
+                  width: '100%',
+                  height: 120,
+                  padding: 16,
+                  border: `1px solid ${themeConfig.bubbleBorder}`,
+                  borderRadius: 12,
+                  background: themeConfig.bgSecondary,
+                  color: themeConfig.textPrimary,
+                  fontSize: 14,
+                  fontFamily: themeConfig.fontFamily,
+                  resize: 'none',
+                  outline: 'none',
+                  marginBottom: 20
+                }}
+              />
+              
+              <button
+                onClick={handleStartCall}
+                disabled={!contextInput.trim()}
+                style={{
+                  width: '100%',
+                  padding: 16,
+                  border: 'none',
+                  borderRadius: 14,
+                  background: contextInput.trim() ? themeConfig.accent : themeConfig.bubbleBorder,
+                  color: '#fff',
+                  fontSize: 16,
+                  fontWeight: 600,
+                  fontFamily: themeConfig.fontFamily,
+                  cursor: contextInput.trim() ? 'pointer' : 'not-allowed',
+                  transition: 'all 0.2s'
+                }}
+              >
+                开始通话
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div style={{
+          width: '100%',
+          height: '100%',
+          background: themeConfig.bgPrimary,
+          display: 'flex',
+          flexDirection: 'column',
+          fontFamily: themeConfig.fontFamily,
+          position: 'relative'
+        }}>
+          {/* Status Bar */}
+          <div style={{
+            height: 44,
+            background: themeConfig.bgSecondary,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0 20px',
+            borderBottom: `1px solid ${themeConfig.bubbleBorder}`
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: '#22C55E'
+              }} />
+              <span style={{ color: themeConfig.textPrimary, fontSize: 13, fontWeight: 500 }}>通话中</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Icons.Clock size={14} color={themeConfig.textSecondary} />
+              <span style={{ color: themeConfig.textSecondary, fontSize: 13, fontFamily: 'monospace' }}>
+                {String(Math.floor(demoState.currentTime / 60)).padStart(2, '0')}:{String(demoState.currentTime % 60).padStart(2, '0')}
+              </span>
+            </div>
+            <Icons.Volume2 size={18} color={themeConfig.textSecondary} />
+          </div>
+
+          {/* Transcript Area */}
+          <div ref={scrollRef} style={{
+            flex: '0 0 42%',
+            overflow: 'auto',
+            padding: '16px 12px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12
+          }}>
+            {demoState.messages.map((msg, idx) => (
+              <div key={idx} style={{
+                display: 'flex',
+                justifyContent: msg.speaker === 'me' ? 'flex-end' : 'flex-start',
+                animation: 'fadeIn 0.3s ease-out'
+              }}>
+                {themeConfig.showAvatars && msg.speaker === 'other' && (
+                  <div style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: '50%',
+                    background: themeConfig.accent,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: 8,
+                    flexShrink: 0
+                  }}>
+                    <Icons.User size={16} color="#fff" />
+                  </div>
+                )}
+                <div style={{
+                  maxWidth: '75%',
+                  padding: '10px 14px',
+                  borderRadius: msg.speaker === 'me' 
+                    ? (themeConfig.radiusBubble === '50px' ? '20px 20px 4px 20px' : '16px 16px 4px 16px')
+                    : (themeConfig.radiusBubble === '50px' ? '20px 20px 20px 4px' : '16px 16px 16px 4px'),
+                  background: msg.speaker === 'me' ? themeConfig.messageMeBg : themeConfig.messageOtherBg,
+                  color: msg.speaker === 'me' ? themeConfig.messageMe : themeConfig.messageOther,
+                  fontSize: 14,
+                  lineHeight: 1.5,
+                  position: 'relative'
+                }}>
+                  {msg.text}
+                  {msg.isTyping && (
+                    <span style={{
+                      display: 'inline-block',
+                      width: 2,
+                      height: 14,
+                      background: themeConfig.textPrimary,
+                      marginLeft: 2,
+                      animation: 'blink 1s infinite',
+                      verticalAlign: 'middle'
+                    }} />
+                  )}
+                </div>
+              </div>
+            ))}
+            {demoState.messages.length === 0 && (
+              <div style={{
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: themeConfig.textSecondary,
+                fontSize: 14
+              }}>
+                等待对话开始...
+              </div>
+            )}
+          </div>
+
+          {/* Bubble Panel */}
+          <div style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: '55%',
+            background: themeConfig.panelBg,
+            backdropFilter: themeConfig.isDark ? 'blur(20px)' : 'none',
+            transform: demoState.isPanelOpen ? 'translateY(0)' : 'translateY(100%)',
+            transition: `transform 300ms ${themeConfig.transition}`,
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            boxShadow: '0 -10px 40px rgba(0,0,0,0.15)',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            {/* Panel Handle */}
+            <div style={{
+              padding: '12px 0',
+              display: 'flex',
+              justifyContent: 'center'
+            }}>
+              <div style={{
+                width: 40,
+                height: 4,
+                background: themeConfig.bubbleBorder,
+                borderRadius: 2
+              }} />
+            </div>
+            
+            {/* Bubble Groups */}
+            <div style={{
+              flex: 1,
+              overflow: 'auto',
+              padding: '0 16px 100px'
+            }}>
+              {demoState.bubbleGroups.map((group, gIdx) => (
+                <div key={gIdx} style={{
+                  marginBottom: 24,
+                  paddingBottom: 20,
+                  borderBottom: `1px solid ${themeConfig.bubbleBorder}`
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    marginBottom: 12
+                  }}>
+                    <Icons.MessageCircle size={14} color={themeConfig.accent} />
+                    <span style={{
+                      color: themeConfig.textSecondary,
+                      fontSize: 12,
+                      fontWeight: 500
+                    }}>{group.context}</span>
+                  </div>
+                  <div style={{
+                    display: 'flex',
+                    gap: 10,
+                    overflowX: 'auto',
+                    paddingBottom: 4
+                  }}>
+                    {group.bubbles.map((bubble, bIdx) => (
+                      <Bubble 
+                        key={bIdx}
+                        bubble={bubble}
+                        theme={themeConfig}
+                        isExpanded={demoState.activeBubbleIndex === `${gIdx}-${bIdx}`}
+                        onClick={() => onBubbleClick(`${gIdx}-${bIdx}`)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {demoState.bubbleGroups.length === 0 && (
+                <div style={{
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: themeConfig.textSecondary,
+                  fontSize: 14
+                }}>
+                  等待话术建议...
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* FAB Button */}
+          <button
+            onClick={() => onBubbleClick('toggle')}
+            style={{
+              position: 'absolute',
+              bottom: 24,
+              right: 20,
+              width: 56,
+              height: 56,
+              borderRadius: '50%',
+              background: demoState.isPanelOpen ? themeConfig.textSecondary : themeConfig.fabBg,
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              boxShadow: themeConfig.shadowBubble,
+              transition: 'all 0.3s',
+              zIndex: 50
+            }}
+          >
+            {demoState.isPanelOpen ? (
+              <Icons.X size={24} color="#fff" />
+            ) : (
+              <>
+                <Icons.MessageCircle size={24} color="#fff" />
+                {demoState.hasNewBubble && (
+                  <span style={{
+                    position: 'absolute',
+                    top: 4,
+                    right: 4,
+                    width: 14,
+                    height: 14,
+                    borderRadius: '50%',
+                    background: '#EF4444',
+                    animation: 'pulse 1.5s infinite'
+                  }} />
+                )}
+              </>
+            )}
+          </button>
+        </div>
+      );
+    }
+
+    // Bubble Component
+    function Bubble({ bubble, theme, isExpanded, onClick }) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <button
+            onClick={onClick}
+            style={{
+              padding: '10px 16px',
+              borderRadius: theme.radiusBubble,
+              background: isExpanded ? theme.bubbleActive : theme.bubbleBg,
+              border: `1px solid ${theme.bubbleBorder}`,
+              color: isExpanded ? theme.accent : theme.bubbleText,
+              fontSize: 13,
+              fontWeight: 500,
+              fontFamily: theme.fontFamily,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              boxShadow: isExpanded ? `0 0 20px ${theme.accent}30` : theme.shadowBubble,
+              transition: 'all 0.2s',
+              outline: 'none'
+            }}
+          >
+            {bubble.preview}
+          </button>
+          
+          {/* Expanded Card */}
+          <div style={{
+            marginTop: 8,
+            padding: '12px 14px',
+            borderRadius: theme.radiusBubble,
+            background: theme.bubbleActive,
+            border: `1px solid ${theme.bubbleBorder}`,
+            maxWidth: 220,
+            opacity: isExpanded ? 1 : 0,
+            maxHeight: isExpanded ? 200 : 0,
+            overflow: 'hidden',
+            transform: isExpanded ? 'translateY(0)' : 'translateY(-10px)',
+            transition: 'all 0.2s ease-out',
+            pointerEvents: isExpanded ? 'auto' : 'none'
+          }}>
+            <div style={{
+              fontSize: 10,
+              color: theme.accent,
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              marginBottom: 6
+            }}>{bubble.strategy}</div>
+            <div style={{
+              fontSize: 13,
+              color: theme.textPrimary,
+              lineHeight: 1.5
+            }}>{bubble.fullText}</div>
+          </div>
+        </div>
+      );
+    }
+
+    // Main App Component
+    function App() {
+      const activeTheme = 'clean';
+      const [demoState, setDemoState] = useState({
+        isPlaying: false,
+        currentTime: 0,
+        messages: [],
+        bubbleGroups: [],
+        activeBubbleIndex: null,
+        isPanelOpen: false,
+        hasNewBubble: false
+      });
+      const timerRef = useRef(null);
+      const typingTimeoutRef = useRef(null);
+
+      const bubbleTriggerTimes = useMemo(() => {
+        return demoScript.filter(s => s.type === 'bubble_group').map(s => s.time);
+      }, []);
+
+      const processScript = useCallback((currentTime) => {
+        const relevantEvents = demoScript.filter(e => e.time <= currentTime);
+        
+        // Check for new messages
+        const newMessages = [];
+        let hasNewBubbles = false;
+        let newBubbleGroup = null;
+        
+        relevantEvents.forEach(event => {
+          if (event.type === 'message' && !demoState.messages.find(m => m.text === event.text)) {
+            newMessages.push({
+              ...event,
+              isTyping: event.time === currentTime
+            });
+          }
+          if (event.type === 'bubble_group' && event.time === currentTime) {
+            newBubbleGroup = event;
+            hasNewBubbles = true;
+          }
+        });
+        
+        setDemoState(prev => {
+          const updatedMessages = [...prev.messages];
+          newMessages.forEach(msg => {
+            if (!updatedMessages.find(m => m.text === msg.text)) {
+              updatedMessages.push(msg);
+            }
+          });
+          
+          let updatedBubbleGroups = [...prev.bubbleGroups];
+          if (newBubbleGroup) {
+            updatedBubbleGroups.push(newBubbleGroup);
+          }
+          
+          return {
+            ...prev,
+            messages: updatedMessages,
+            bubbleGroups: updatedBubbleGroups,
+            hasNewBubble: hasNewBubbles,
+            isPanelOpen: hasNewBubbles || prev.isPanelOpen
+          };
+        });
+        
+        // Auto-expand first bubble after 2 seconds when new bubble group appears
+        if (hasNewBubbles) {
+          setTimeout(() => {
+            setDemoState(prev => ({
+              ...prev,
+              activeBubbleIndex: `${prev.bubbleGroups.length - 1}-0`
+            }));
+          }, 2000);
+          
+          // Auto-close after 2 more seconds
+          setTimeout(() => {
+            setDemoState(prev => ({
+              ...prev,
+              activeBubbleIndex: null,
+              hasNewBubble: false
+            }));
+          }, 4000);
+        }
+      }, [demoState.messages]);
+
+      // Typing effect for messages
+      useEffect(() => {
+        if (demoState.messages.length > 0) {
+          const lastMsg = demoState.messages[demoState.messages.length - 1];
+          if (lastMsg.isTyping) {
+            clearTimeout(typingTimeoutRef.current);
+            typingTimeoutRef.current = setTimeout(() => {
+              setDemoState(prev => {
+                const updated = [...prev.messages];
+                updated[updated.length - 1] = { ...updated[updated.length - 1], isTyping: false };
+                return { ...prev, messages: updated };
+              });
+            }, lastMsg.text.length * 50);
+          }
+        }
+        return () => clearTimeout(typingTimeoutRef.current);
+      }, [demoState.messages]);
+
+      // Demo playback
+      useEffect(() => {
+        if (demoState.isPlaying && demoState.currentTime < SCRIPT_DURATION) {
+          timerRef.current = setInterval(() => {
+            setDemoState(prev => {
+              const newTime = prev.currentTime + 1;
+              if (newTime >= SCRIPT_DURATION) {
+                return { ...prev, isPlaying: false, currentTime: SCRIPT_DURATION };
+              }
+              processScript(newTime);
+              return { ...prev, currentTime: newTime };
+            });
+          }, 1000);
+        } else {
+          clearInterval(timerRef.current);
+        }
+        
+        return () => clearInterval(timerRef.current);
+      }, [demoState.isPlaying, demoState.currentTime, processScript]);
+
+      const handlePlay = () => {
+        if (demoState.currentTime >= SCRIPT_DURATION) {
+          // Reset
+          setDemoState({
+            isPlaying: true,
+            currentTime: 0,
+            messages: [],
+            bubbleGroups: [],
+            activeBubbleIndex: null,
+            isPanelOpen: false,
+            hasNewBubble: false
+          });
+          setTimeout(() => processScript(0), 100);
+        } else {
+          setDemoState(prev => ({ ...prev, isPlaying: true }));
+        }
+      };
+
+      const handlePause = () => {
+        setDemoState(prev => ({ ...prev, isPlaying: false }));
+      };
+
+      const handleReset = () => {
+        clearInterval(timerRef.current);
+        setDemoState({
+          isPlaying: false,
+          currentTime: 0,
+          messages: [],
+          bubbleGroups: [],
+          activeBubbleIndex: null,
+          isPanelOpen: false,
+          hasNewBubble: false
+        });
+      };
+
+      const handleProgressClick = (e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const percent = (e.clientX - rect.left) / rect.width;
+        const newTime = Math.floor(percent * SCRIPT_DURATION);
+        
+        // Reset and replay up to that point
+        setDemoState({
+          isPlaying: true,
+          currentTime: newTime,
+          messages: [],
+          bubbleGroups: [],
+          activeBubbleIndex: null,
+          isPanelOpen: false,
+          hasNewBubble: false
+        });
+        
+        // Process all events up to newTime
+        setTimeout(() => {
+          for (let t = 0; t <= newTime; t++) {
+            processScript(t);
+          }
+          setDemoState(prev => ({ ...prev, currentTime: newTime }));
+        }, 50);
+      };
+
+      const handleBubbleClick = (index) => {
+        if (index === 'toggle') {
+          setDemoState(prev => ({
+            ...prev,
+            isPanelOpen: !prev.isPanelOpen,
+            hasNewBubble: !prev.isPanelOpen ? false : prev.hasNewBubble
+          }));
+        } else {
+          setDemoState(prev => ({
+            ...prev,
+            activeBubbleIndex: prev.activeBubbleIndex === index ? null : index
+          }));
+        }
+      };
+
+      const formatTime = (seconds) => {
+        return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+      };
+
+      const themeConfig = themes[activeTheme];
+
+      return (
+        <div className="playground-container">
+          <h1 className="playground-title">CallCopilot UI Design Playground</h1>
+          <p className="playground-subtitle">交互式设计原型 - A方案</p>
+
+          {/* Tab Switcher */}
+          <div className="tab-container">
+            <button
+              className="tab-btn active"
+              data-theme="clean"
+            >
+              A. Clean Professional
+            </button>
+          </div>
+
+          {/* Demo Controls */}
+          <div className="demo-controls">
+            <div className="controls-row">
+              {!demoState.isPlaying ? (
+                <button className="control-btn play" onClick={handlePlay}>
+                  <Icons.Play size={16} /> 播放
+                </button>
+              ) : (
+                <button className="control-btn pause" onClick={handlePause}>
+                  <Icons.Pause size={16} /> 暂停
+                </button>
+              )}
+              
+              <button className="control-btn reset" onClick={handleReset}>
+                <Icons.RotateCcw size={16} /> 重置
+              </button>
+              
+              <span className="time-display">{formatTime(demoState.currentTime)}</span>
+              
+              <div className="progress-bar" onClick={handleProgressClick}>
+                <div 
+                  className="progress-fill" 
+                  style={{ width: `${(demoState.currentTime / SCRIPT_DURATION) * 100}%` }}
+                />
+                <div className="bubble-markers">
+                  {bubbleTriggerTimes.map((time, idx) => (
+                    <div
+                      key={idx}
+                      className="bubble-marker"
+                      style={{ left: `${(time / SCRIPT_DURATION) * 100}%` }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Phone Display */}
+          <div className="phone-wrapper">
+            <div className="phone-display">
+              <div className="phone-frame">
+                <div className="phone-screen">
+                  <PhoneScreen
+                    theme={activeTheme}
+                    demoState={demoState}
+                    onBubbleClick={handleBubbleClick}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Theme Description */}
+          <div className="theme-description">
+            <h3>{themeConfig.name}</h3>
+            <p>{themeConfig.description}</p>
+          </div>
+        </div>
+      );
+    }
+
+    // Render App
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
